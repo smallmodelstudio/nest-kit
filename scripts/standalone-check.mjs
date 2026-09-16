@@ -64,31 +64,58 @@ function packageDirs() {
     .filter((dir) => statSync(dir).isDirectory());
 }
 
-function checkPackage(pkgDir) {
-  const pkgJson = JSON.parse(
-    readFileSync(join(pkgDir, 'package.json'), 'utf8'),
-  );
-  console.log(`\n=== standalone check: ${pkgJson.name} ===`);
+function readPackageJson(pkgDir) {
+  return JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
+}
 
-  run('pnpm', ['--filter', pkgJson.name, 'run', 'build'], { cwd: rootDir });
-
-  const workDir = mkdtempSync(join(tmpdir(), 'nest-kit-standalone-'));
-  try {
+// Packs every package into `sharedDir` up front, so a package that depends on
+// another workspace package (declared as `workspace:*`, which `pnpm pack`
+// rewrites to a plain version the public registry has never heard of) can
+// have that dependency swapped for the local tarball below, instead of
+// `npm install` trying to fetch it from the registry.
+function buildAndPackAll(sharedDir) {
+  const tarballsByName = new Map();
+  for (const pkgDir of packageDirs()) {
+    const pkgJson = readPackageJson(pkgDir);
+    run('pnpm', ['--filter', pkgJson.name, 'run', 'build'], { cwd: rootDir });
     const packOutput = execFileSync(
       'pnpm',
-      ['pack', '--pack-destination', workDir],
+      ['pack', '--pack-destination', sharedDir],
       { cwd: pkgDir, encoding: 'utf8' },
     );
     const tarballPath = packOutput.trim().split('\n').pop();
+    tarballsByName.set(pkgJson.name, tarballPath);
+  }
+  return tarballsByName;
+}
 
+function resolveDependencies(pkgJson, tarballsByName) {
+  const workspaceAware = (deps) =>
+    Object.fromEntries(
+      Object.entries(deps).map(([name, range]) => [
+        name,
+        tarballsByName.get(name) ?? range,
+      ]),
+    );
+
+  return {
+    ...BASE_NEST_DEPENDENCIES,
+    ...(pkgJson.peerDependencies ?? {}),
+    ...workspaceAware(pkgJson.dependencies ?? {}),
+    [pkgJson.name]: tarballsByName.get(pkgJson.name),
+  };
+}
+
+function checkPackage(pkgDir, tarballsByName) {
+  const pkgJson = readPackageJson(pkgDir);
+  console.log(`\n=== standalone check: ${pkgJson.name} ===`);
+
+  const workDir = mkdtempSync(join(tmpdir(), 'nest-kit-standalone-'));
+  try {
     const appDir = join(workDir, 'app');
     mkdirSync(appDir);
 
-    const dependencies = {
-      ...BASE_NEST_DEPENDENCIES,
-      ...(pkgJson.peerDependencies ?? {}),
-      [pkgJson.name]: tarballPath,
-    };
+    const dependencies = resolveDependencies(pkgJson, tarballsByName);
 
     writeFileSync(
       join(appDir, 'package.json'),
@@ -112,6 +139,12 @@ function checkPackage(pkgDir) {
   }
 }
 
-for (const pkgDir of packageDirs()) {
-  checkPackage(pkgDir);
+const sharedDir = mkdtempSync(join(tmpdir(), 'nest-kit-standalone-tarballs-'));
+try {
+  const tarballsByName = buildAndPackAll(sharedDir);
+  for (const pkgDir of packageDirs()) {
+    checkPackage(pkgDir, tarballsByName);
+  }
+} finally {
+  rmSync(sharedDir, { recursive: true, force: true });
 }

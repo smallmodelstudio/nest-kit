@@ -7,7 +7,9 @@ controllers from it, plus the production building blocks every service needs
 
 Every package installs on its own, so a service only takes what it uses.
 
-**Status:** phase 0 (workspace skeleton) done. No packages are published yet; see [Roadmap](docs/README-roadmap.md).
+**Status:** phase 1 (core spike) done: `contract`, `nest-zod`, and minimal
+`nest-envelope`/`nest-errors` are working, proven end to end by the
+`playground/` app. No packages are published yet; see [Roadmap](docs/README-roadmap.md).
 
 **Stack:** Node 24 · NestJS 12 · Fastify 5 · Zod 4 · TypeScript · pnpm · Vitest · Drizzle
 

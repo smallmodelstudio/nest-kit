@@ -3,4 +3,6 @@ packages:
   - 'playground'
 
 allowBuilds:
+  # swagger-ui-dist's install-time analytics ping (transitive via @nestjs/swagger); no functional need.
+  '@scarf/scarf': false
   '@swc/core': true

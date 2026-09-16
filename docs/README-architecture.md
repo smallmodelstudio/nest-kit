@@ -265,11 +265,36 @@ Error:
 
 - **Scope and registry:** `@smallmodelstudio` on public npm or GitHub Packages.
   Must be settled before the first publish.
-- **Swagger `$ref`s for Zod schemas:** `@nestjs/swagger` expects classes. Named
-  Zod schemas probably need adding to `document.components.schemas` after
-  `createDocument`. Settled in the phase 1 spike.
-- **OpenAPI version:** Zod 4 outputs JSON Schema 2020-12, while `@nestjs/swagger`
-  outputs OpenAPI 3.0. Confirm that Zod's `openapi-3.0` target handles nullable and
-  optional fields correctly. Settled in the phase 1 spike.
-- **Peer ranges:** confirm Nest 12, Zod 4 and Fastify 5 install together without
-  overrides.
+
+## Settled in the phase 1 spike
+
+- **Swagger `$ref`s for Zod schemas:** `contract`'s `toOpenApiSchema(schema)`
+  returns `{ $ref: '#/components/schemas/<id>' }` for any schema registered
+  with `.meta({ id })`, else an inline JSON Schema. `collectOpenApiComponents()`
+  converts every `.meta({ id })`-registered schema at once, via Zod's registry
+  overload of `toJSONSchema` (`z.toJSONSchema(z.globalRegistry, { target:
+'openapi-3.0' })`), and `mergeOpenApiComponents(document)` merges the result
+  into `document.components.schemas`. Call it after `SwaggerModule.createDocument`
+  and before `SwaggerModule.setup`.
+
+  One gotcha this surfaced: running a _composite_ schema that merely contains a
+  named schema (for example the `{ data, meta }` envelope wrapping `Post`)
+  through `toJSONSchema` in one call inlines the named part under a local
+  `definitions`/`$defs` block instead of pointing at `components.schemas` —
+  `toJSONSchema` has no way to know a nested named schema should become an
+  external ref. `envelopeOpenApiSchema(dataSchema, { paginated })` avoids this
+  by assembling the envelope from already-converted parts (each produced via
+  `toOpenApiSchema`) rather than converting the whole wrapped schema at once.
+  `nest-zod`'s `@Operation` and `nest-envelope`'s `ApiEnvelopeResponse` both use
+  it for this reason.
+
+- **OpenAPI version:** confirmed against zod 4.6.5. `z.toJSONSchema(schema, {
+target: 'openapi-3.0' })` handles nullable and optional fields correctly: a
+  `.nullable()` field stays in `required` with `nullable: true` added (it must
+  be present, just possibly `null`), while an `.optional()` field is simply
+  omitted from `required`.
+
+- **Peer ranges:** Nest 12.0.3, Zod 4.6.5 and Fastify 5.12.x install together
+  cleanly with no overrides needed (`@nestjs/swagger` additionally needs
+  `@fastify/static` as a consuming app's own dependency, to serve the Swagger UI
+  under Fastify).

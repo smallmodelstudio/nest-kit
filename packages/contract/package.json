@@ -1,7 +1,7 @@
 {
-  "name": "@smallmodelstudio/placeholder",
+  "name": "@smallmodelstudio/contract",
   "version": "0.0.0",
-  "description": "Placeholder package that proves the nest-kit build, lint, test and publishing pipeline end to end.",
+  "description": "Define a resource once in Zod and get validation, types and OpenAPI docs from it.",
   "license": "MIT",
   "type": "commonjs",
   "main": "dist/index.js",
@@ -18,5 +18,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "zod": "^4.6.5"
   }
 }
