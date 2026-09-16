@@ -1,0 +1,22 @@
+{
+  "name": "@smallmodelstudio/placeholder",
+  "version": "0.0.0",
+  "description": "Placeholder package that proves the nest-kit build, lint, test and publishing pipeline end to end.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
