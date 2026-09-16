@@ -1,67 +1,38 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import type { PaginatedResult } from '@smallmodelstudio/contract';
-import type { CreatePost, Post, PostsQuery } from './post.contract';
+import { Injectable } from '@nestjs/common';
+import {
+  InjectRepository,
+  type ResourceListResult,
+  type ResourceRepository,
+} from '@smallmodelstudio/nest-resource';
+import { posts, type CreatePost, type Post, type PostsQuery } from './post.contract';
 
 @Injectable()
 export class PostsService {
-  private posts: Post[] = [
-    { id: 1, userId: 1, title: 'First post', body: 'Hello world' },
-    { id: 2, userId: 1, title: 'Second post', body: 'More words' },
-    { id: 3, userId: 2, title: 'Third post', body: 'Even more words' },
-  ];
-  private nextId = 4;
+  constructor(
+    @InjectRepository(posts) private readonly repository: ResourceRepository<typeof posts>,
+  ) {}
 
-  findAll(query: PostsQuery): PaginatedResult<Post> {
-    const filtered =
-      query.userId === undefined
-        ? this.posts
-        : this.posts.filter((post) => post.userId === query.userId);
-    const items = filtered.slice(query.offset, query.offset + query.limit);
-    return {
-      items,
-      page: {
-        offset: query.offset,
-        limit: query.limit,
-        total: filtered.length,
-      },
-    };
+  findAll(query: PostsQuery): Promise<ResourceListResult<typeof posts>> {
+    return this.repository.list(query);
   }
 
-  findOne(id: number): Post {
-    return this.getOrThrow(id);
+  findOne(id: number): Promise<Post> {
+    return this.repository.get(id);
   }
 
-  create(body: CreatePost): Post {
-    const post: Post = { id: this.nextId++, ...body };
-    this.posts.push(post);
-    return post;
+  create(body: CreatePost): Promise<Post> {
+    return this.repository.create(body);
   }
 
-  replace(id: number, body: CreatePost): Post {
-    const existing = this.getOrThrow(id);
-    const replaced: Post = { ...body, id: existing.id };
-    this.posts = this.posts.map((post) => (post.id === id ? replaced : post));
-    return replaced;
+  replace(id: number, body: CreatePost): Promise<Post> {
+    return this.repository.replace(id, body);
   }
 
-  patch(id: number, body: Partial<CreatePost>): Post {
-    const existing = this.getOrThrow(id);
-    const patched: Post = { ...existing, ...body };
-    this.posts = this.posts.map((post) => (post.id === id ? patched : post));
-    return patched;
+  patch(id: number, body: Partial<CreatePost>): Promise<Post> {
+    return this.repository.patch(id, body);
   }
 
-  remove(id: number): null {
-    this.getOrThrow(id);
-    this.posts = this.posts.filter((post) => post.id !== id);
-    return null;
-  }
-
-  private getOrThrow(id: number): Post {
-    const post = this.posts.find((candidate) => candidate.id === id);
-    if (!post) {
-      throw new NotFoundException(`Post ${id} not found`);
-    }
-    return post;
+  remove(id: number): Promise<null> {
+    return this.repository.remove(id);
   }
 }

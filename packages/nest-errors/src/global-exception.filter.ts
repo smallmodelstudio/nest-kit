@@ -6,6 +6,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   fallbackErrorMapping,
   httpExceptionMapper,
+  upstreamErrorMapper,
   zodErrorMapper,
   type ErrorMapper,
 } from './mapper';
@@ -30,7 +31,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     extraMappers: ErrorMapper[] = [],
     private readonly getCorrelationId?: () => string | undefined,
   ) {
-    this.mappers = [...extraMappers, httpExceptionMapper, zodErrorMapper];
+    this.mappers = [...extraMappers, httpExceptionMapper, zodErrorMapper, upstreamErrorMapper];
   }
 
   catch(error: unknown, host: ArgumentsHost): void {

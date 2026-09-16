@@ -1,5 +1,6 @@
 import { STATUS_CODES } from 'node:http';
 import { HttpException } from '@nestjs/common';
+import { UpstreamError } from '@smallmodelstudio/http-client';
 import { ZodError } from 'zod';
 
 export interface ErrorMapping {
@@ -64,6 +65,33 @@ export const zodErrorMapper: ErrorMapper = {
       .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
       .join('; ');
     return { statusCode: 400, message, error: 'Bad Request' };
+  },
+};
+
+// A 4xx from the upstream is the caller's fault, not this service's, so it's
+// passed through with the same status code — but with a generic message
+// rather than the upstream's own, which might describe the upstream's shape
+// (field names, internal ids) that has no business leaking through this
+// service's own API.
+export const upstreamErrorMapper: ErrorMapper = {
+  supports: (error) => error instanceof UpstreamError,
+  toResponse(error) {
+    const upstreamError = error as UpstreamError;
+
+    if (upstreamError.kind === 'TIMEOUT') {
+      return { statusCode: 504, message: 'Upstream request timed out', error: 'Gateway Timeout' };
+    }
+
+    const status = upstreamError.status;
+    if (upstreamError.kind === 'BAD_RESPONSE' && status !== undefined && status < 500) {
+      return {
+        statusCode: status,
+        message: 'Upstream request failed',
+        error: STATUS_CODES[status] ?? 'Bad Request',
+      };
+    }
+
+    return { statusCode: 502, message: 'Upstream request failed', error: 'Bad Gateway' };
   },
 };
 

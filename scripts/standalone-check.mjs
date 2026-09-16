@@ -116,11 +116,19 @@ function checkPackage(pkgDir, tarballsByName) {
     mkdirSync(appDir);
 
     const dependencies = resolveDependencies(pkgJson, tarballsByName);
+    // A declared dependency's own tarball still lists its transitive
+    // `@smallmodelstudio/*` dependencies at the plain version `pnpm pack`
+    // rewrote `workspace:*` to (e.g. nest-resource -> nest-http ->
+    // http-client) — a version the public registry has never published.
+    // `overrides` forces npm to resolve every occurrence of each package
+    // name, at any depth, to the same local tarball, regardless of which
+    // package declared it.
+    const overrides = Object.fromEntries(tarballsByName);
 
     writeFileSync(
       join(appDir, 'package.json'),
       JSON.stringify(
-        { name: 'standalone-check-app', private: true, dependencies },
+        { name: 'standalone-check-app', private: true, dependencies, overrides },
         null,
         2,
       ),

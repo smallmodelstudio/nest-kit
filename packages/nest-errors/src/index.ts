@@ -1,6 +1,7 @@
 export {
   httpExceptionMapper,
   zodErrorMapper,
+  upstreamErrorMapper,
   fallbackErrorMapping,
   type ErrorMapper,
   type ErrorMapping,

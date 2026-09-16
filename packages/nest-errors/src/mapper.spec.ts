@@ -3,9 +3,10 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { UpstreamError } from '@smallmodelstudio/http-client';
 import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
-import { httpExceptionMapper, zodErrorMapper } from './mapper';
+import { httpExceptionMapper, upstreamErrorMapper, zodErrorMapper } from './mapper';
 
 describe('httpExceptionMapper', () => {
   it('supports HttpException instances', () => {
@@ -92,5 +93,54 @@ describe('zodErrorMapper', () => {
     expect(mapping.error).toBe('Bad Request');
     expect(mapping.message).toContain('title:');
     expect(mapping.message).toContain('body:');
+  });
+});
+
+describe('upstreamErrorMapper', () => {
+  it('supports UpstreamError instances', () => {
+    expect(upstreamErrorMapper.supports(new UpstreamError('TIMEOUT', 'boom'))).toBe(true);
+    expect(upstreamErrorMapper.supports(new Error('boom'))).toBe(false);
+  });
+
+  it('maps a TIMEOUT to 504', () => {
+    const mapping = upstreamErrorMapper.toResponse(new UpstreamError('TIMEOUT', 'boom'));
+    expect(mapping).toEqual({
+      statusCode: 504,
+      message: 'Upstream request timed out',
+      error: 'Gateway Timeout',
+    });
+  });
+
+  it('passes an upstream 4xx through with the same status but a generic message', () => {
+    const mapping = upstreamErrorMapper.toResponse(
+      new UpstreamError('BAD_RESPONSE', 'the upstream said something about its own internals', {
+        status: 404,
+      }),
+    );
+    expect(mapping).toEqual({
+      statusCode: 404,
+      message: 'Upstream request failed',
+      error: 'Not Found',
+    });
+  });
+
+  it('maps an upstream 5xx to 502', () => {
+    const mapping = upstreamErrorMapper.toResponse(
+      new UpstreamError('BAD_RESPONSE', 'boom', { status: 503 }),
+    );
+    expect(mapping).toEqual({
+      statusCode: 502,
+      message: 'Upstream request failed',
+      error: 'Bad Gateway',
+    });
+  });
+
+  it('maps a NETWORK_ERROR to 502', () => {
+    const mapping = upstreamErrorMapper.toResponse(new UpstreamError('NETWORK_ERROR', 'boom'));
+    expect(mapping).toEqual({
+      statusCode: 502,
+      message: 'Upstream request failed',
+      error: 'Bad Gateway',
+    });
   });
 });

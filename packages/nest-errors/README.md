@@ -7,10 +7,14 @@ driven by an extensible list of mappers.
 app.useGlobalFilters(new GlobalExceptionFilter());
 ```
 
-Built-in mappers cover `HttpException` and Zod validation errors (400, with
-field paths in the message); anything else falls back to a generic 500. Pass
-your own mappers to the constructor to extend or override this — they're
-checked before the built-ins:
+Built-in mappers cover `HttpException`, Zod validation errors (400, with
+field paths in the message), and `@smallmodelstudio/http-client`'s
+`UpstreamError` (timeout → 504; an upstream 4xx passed through with the same
+status but a generic message, since the upstream's own message might
+describe its shape rather than this service's; anything else → 502).
+Anything else falls back to a generic 500. Pass your own mappers to the
+constructor to extend or override this — they're checked before the
+built-ins:
 
 ```ts
 app.useGlobalFilters(new GlobalExceptionFilter([myUpstreamErrorMapper]));

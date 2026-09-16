@@ -19,12 +19,12 @@ export class PostsController {
   }
 
   @Operation(posts, 'get')
-  findOne(@ContractParam(posts, 'id') id: number): Post {
+  findOne(@ContractParam(posts, 'id') id: number): Promise<Post> {
     return this.service.findOne(id);
   }
 
   @Operation(posts, 'create')
-  create(@ContractBody(posts, 'create') body: CreatePost): Post {
+  create(@ContractBody(posts, 'create') body: CreatePost): Promise<Post> {
     return this.service.create(body);
   }
 
@@ -32,7 +32,7 @@ export class PostsController {
   replace(
     @ContractParam(posts, 'id') id: number,
     @ContractBody(posts, 'replace') body: CreatePost,
-  ): Post {
+  ): Promise<Post> {
     return this.service.replace(id, body);
   }
 
@@ -40,12 +40,12 @@ export class PostsController {
   patch(
     @ContractParam(posts, 'id') id: number,
     @ContractBody(posts, 'patch') body: Partial<CreatePost>,
-  ): Post {
+  ): Promise<Post> {
     return this.service.patch(id, body);
   }
 
   @Operation(posts, 'remove')
-  remove(@ContractParam(posts, 'id') id: number): null {
+  remove(@ContractParam(posts, 'id') id: number): Promise<null> {
     return this.service.remove(id);
   }
 }

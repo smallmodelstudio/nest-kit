@@ -1,0 +1,49 @@
+{
+  "name": "@smallmodelstudio/http-client",
+  "version": "0.0.0",
+  "description": "fetch-based HTTP client with retries for safe methods, backoff and jitter, per-attempt timeouts and a typed UpstreamError. The /contract subpath adds a typed client built from a resource contract.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract": {
+      "types": "./dist/contract/index.d.ts",
+      "default": "./dist/contract/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "contract": ["dist/contract/index.d.ts"]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "zod": "^4"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4",
+    "zod": "^4.6.5"
+  }
+}

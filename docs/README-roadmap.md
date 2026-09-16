@@ -13,7 +13,7 @@ Update the status column when a phase starts or finishes.
 | 0. Skeleton    | Done        | none (workspace tooling)                                                                                                             |
 | 1. Core spike  | Done        | `contract`, `nest-zod`, minimal `nest-envelope` and `nest-errors`                                                                    |
 | 2. Extract     | Done        | `nest-context`, `nest-errors`, `nest-logging`, `nest-health`, `nest-cache`, `nest-metrics`, `nest-bootstrap`, `otel`, `nest-testing` |
-| 3. Resources   | Not started | `http-client`, `nest-http`, `nest-resource`                                                                                          |
+| 3. Resources   | Done        | `http-client`, `nest-http`, `nest-resource`                                                                                          |
 | 4. Codegen     | Not started | `cli`, service template                                                                                                              |
 | 5. Persistence | Not started | `nest-drizzle`                                                                                                                       |
 | Later          | Not planned | messaging, auth, idempotency keys, outbox                                                                                            |
@@ -77,11 +77,6 @@ along.
 **Done when** every package passes its moved specs and the standalone check, and
 the playground runs on them.
 
-The architecture doc's `nest-errors` built-in mapper list also names an
-`UpstreamError` mapper (timeout → 504, upstream 4xx passed through, anything
-else → 502). That's deferred to phase 3: `UpstreamError` is defined by
-`http-client`, which doesn't exist yet.
-
 ## 3. Resources
 
 - `http-client`: `fetch`, retries only for safe methods, backoff and jitter,
@@ -89,11 +84,14 @@ else → 502). That's deferred to phase 3: `UpstreamError` is defined by
 - `nest-http`: Nest module, config, metrics, correlation ID forwarding.
 - `nest-resource`: repository interface, `ResourceModule.forFeature`, in-memory and
   HTTP-proxy adapters.
-- Move the harness onto the library.
+- Move the playground's `posts` resource onto `nest-resource`'s in-memory
+  adapter, in place of its hand-rolled service.
 
-**Done when** the harness runs entirely on nest-kit and its existing e2e suite
-passes with the same response shapes. The only test changes allowed are imports
-and setup.
+**Done when** the three packages pass their own specs and the standalone
+check, and the playground's `posts` e2e suite passes unchanged (same response
+shapes) against the in-memory adapter. Moving the harness (`json-placeholder-api`,
+a separate project) onto the library is a later step for that project, not
+tracked here.
 
 ## 4. Codegen
 

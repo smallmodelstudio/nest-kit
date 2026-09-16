@@ -1,7 +1,7 @@
 {
-  "name": "@smallmodelstudio/nest-errors",
+  "name": "@smallmodelstudio/nest-http",
   "version": "0.0.0",
-  "description": "Global exception filter producing the error envelope, driven by an extensible list of mappers.",
+  "description": "Nest wrapper around http-client: config-driven base URL, timeout and retries, retry metrics, and x-correlation-id forwarding.",
   "license": "MIT",
   "type": "commonjs",
   "main": "dist/index.js",
@@ -20,20 +20,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@smallmodelstudio/contract": "workspace:*",
     "@smallmodelstudio/http-client": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^12",
-    "fastify": "^5",
-    "zod": "^4"
+    "@opentelemetry/api": "^1.9"
   },
   "devDependencies": {
     "@nestjs/common": "^12.0.3",
+    "@opentelemetry/api": "^1.9.1",
     "@types/node": "24.13.4",
-    "fastify": "^5.12.3",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "zod": "^4.6.5"
+    "reflect-metadata": "^0.2.2"
   }
 }
