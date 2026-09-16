@@ -2,7 +2,7 @@
   "name": "playground",
   "private": true,
   "version": "0.0.0",
-  "description": "Nest app proving the contract model end to end (docs/README-roadmap.md#1-core-spike).",
+  "description": "Nest app proving the contract model and cross-cutting packages end to end (docs/README-roadmap.md#2-extract).",
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -11,20 +11,33 @@
   },
   "dependencies": {
     "@fastify/static": "^10.1.3",
+    "@nestjs/cache-manager": "^12.0.0",
     "@nestjs/common": "^12.0.3",
     "@nestjs/core": "^12.0.3",
     "@nestjs/platform-fastify": "^12.0.3",
     "@nestjs/swagger": "^12.0.1",
+    "@nestjs/terminus": "^12.0.0",
+    "@opentelemetry/api": "^1.9.1",
     "@smallmodelstudio/contract": "workspace:*",
+    "@smallmodelstudio/nest-bootstrap": "workspace:*",
+    "@smallmodelstudio/nest-cache": "workspace:*",
+    "@smallmodelstudio/nest-config": "workspace:*",
+    "@smallmodelstudio/nest-context": "workspace:*",
     "@smallmodelstudio/nest-envelope": "workspace:*",
     "@smallmodelstudio/nest-errors": "workspace:*",
+    "@smallmodelstudio/nest-health": "workspace:*",
+    "@smallmodelstudio/nest-logging": "workspace:*",
+    "@smallmodelstudio/nest-metrics": "workspace:*",
     "@smallmodelstudio/nest-zod": "workspace:*",
+    "cache-manager": "^7.2.9",
     "fastify": "^5.12.3",
+    "nestjs-pino": "^5.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@nestjs/testing": "^12.0.3"
+    "@nestjs/testing": "^12.0.3",
+    "@smallmodelstudio/nest-testing": "workspace:*"
   }
 }

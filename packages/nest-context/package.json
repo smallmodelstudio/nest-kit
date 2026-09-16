@@ -1,0 +1,33 @@
+{
+  "name": "@smallmodelstudio/nest-context",
+  "version": "0.0.0",
+  "description": "Per-request context (correlation id) in AsyncLocalStorage, populated by a Fastify onRequest hook that runs even for unmatched routes.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9",
+    "fastify": "^5"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/context-async-hooks": "^2.11.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@types/node": "24.13.4",
+    "fastify": "^5.12.3"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "@smallmodelstudio/nest-testing",
+  "version": "0.0.0",
+  "description": "createTestApp, api(app), withEnvOverrides, nock-based upstream mocks, and fake(schema) fixtures from a Zod contract.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@smallmodelstudio/nest-bootstrap": "workspace:*",
+    "@smallmodelstudio/contract": "workspace:*",
+    "@smallmodelstudio/nest-envelope": "workspace:*",
+    "nock": "^14.0.17",
+    "supertest": "^7.0.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12",
+    "@nestjs/core": "^12",
+    "@nestjs/platform-fastify": "^12",
+    "@nestjs/testing": "^12",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/core": "^12.0.3",
+    "@nestjs/platform-fastify": "^12.0.3",
+    "@nestjs/testing": "^12.0.3",
+    "@types/node": "24.13.4",
+    "@types/supertest": "^7.0.0",
+    "fastify": "^5.12.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "vitest": "^5.0.1",
+    "zod": "^4.6.5"
+  }
+}

@@ -38,4 +38,26 @@ describe('TransformInterceptor', () => {
       meta: { page: { offset: 0, limit: 20, total: 1 } },
     });
   });
+
+  it('uses getCorrelationId when it returns a value', async () => {
+    const withCallback = new TransformInterceptor(() => 'from-context');
+    const result = await new Promise((resolve) => {
+      withCallback
+        .intercept(context, handlerReturning({ id: 1 }))
+        .subscribe(resolve);
+    });
+    expect(result).toMatchObject({ meta: { correlationId: 'from-context' } });
+  });
+
+  it('falls back to a generated id when getCorrelationId returns undefined', async () => {
+    const withCallback = new TransformInterceptor(() => undefined);
+    const result = await new Promise((resolve) => {
+      withCallback
+        .intercept(context, handlerReturning({ id: 1 }))
+        .subscribe(resolve);
+    });
+    expect(
+      (result as { meta: { correlationId: string } }).meta.correlationId,
+    ).toBeTruthy();
+  });
 });

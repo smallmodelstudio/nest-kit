@@ -1,0 +1,42 @@
+{
+  "name": "@smallmodelstudio/nest-cache",
+  "version": "0.0.0",
+  "description": "Cache interceptor keyed on the route pattern, with an X-Cache header and hit/miss metrics.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@nestjs/cache-manager": "^12",
+    "@nestjs/common": "^12",
+    "@nestjs/core": "^12",
+    "@opentelemetry/api": "^1.9",
+    "cache-manager": "^7",
+    "fastify": "^5",
+    "rxjs": "^7"
+  },
+  "devDependencies": {
+    "@nestjs/cache-manager": "^12.0.0",
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/core": "^12.0.3",
+    "@opentelemetry/api": "^1.9.1",
+    "@types/node": "24.13.4",
+    "cache-manager": "^7.2.9",
+    "fastify": "^5.12.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  }
+}

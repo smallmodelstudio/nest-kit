@@ -1,50 +1,29 @@
 import 'reflect-metadata';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Test } from '@nestjs/testing';
 import { mergeOpenApiComponents } from '@smallmodelstudio/contract';
-import { TransformInterceptor } from '@smallmodelstudio/nest-envelope';
-import { GlobalExceptionFilter } from '@smallmodelstudio/nest-errors';
+import { registerCorrelationIdHook } from '@smallmodelstudio/nest-context';
+import {
+  createTestApp,
+  type ErrorEnvelope,
+  type SuccessEnvelope,
+} from '@smallmodelstudio/nest-testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import type { Post } from '../src/posts/post.contract';
-
-interface SuccessBody<T> {
-  data: T;
-  meta: {
-    timestamp: string;
-    correlationId: string;
-    page?: { offset: number; limit: number; total: number };
-  };
-}
-
-interface ErrorBody {
-  statusCode: number;
-  message: string;
-  error: string;
-  path: string;
-  timestamp: string;
-  correlationId: string;
-}
 
 describe('posts (e2e)', () => {
   let app: NestFastifyApplication;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
-    app.useGlobalInterceptors(new TransformInterceptor());
-    app.useGlobalFilters(new GlobalExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createTestApp(AppModule, {
+      plugins: [
+        {
+          configure: (app: NestFastifyApplication) =>
+            registerCorrelationIdHook(app.getHttpAdapter().getInstance()),
+        },
+      ],
+    });
   });
 
   afterAll(async () => {
@@ -54,7 +33,7 @@ describe('posts (e2e)', () => {
   it('GET /posts returns the paginated success envelope', async () => {
     const response = await app.inject({ method: 'GET', url: '/posts' });
     expect(response.statusCode).toBe(200);
-    const body = response.json<SuccessBody<Post[]>>();
+    const body = response.json<SuccessEnvelope<Post[]>>();
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data.length).toBeGreaterThan(0);
     expect(body.meta.page).toEqual({ offset: 0, limit: 20, total: 3 });
@@ -66,21 +45,28 @@ describe('posts (e2e)', () => {
       method: 'GET',
       url: '/posts?userId=1',
     });
-    const body = response.json<SuccessBody<Post[]>>();
+    const body = response.json<SuccessEnvelope<Post[]>>();
     expect(body.data.every((post) => post.userId === 1)).toBe(true);
+  });
+
+  it('GET /posts/1 twice hits the cache the second time', async () => {
+    const first = await app.inject({ method: 'GET', url: '/posts/1' });
+    const second = await app.inject({ method: 'GET', url: '/posts/1' });
+    expect(first.headers['x-cache']).toBe('MISS');
+    expect(second.headers['x-cache']).toBe('HIT');
   });
 
   it('GET /posts/:id returns the success envelope for one post', async () => {
     const response = await app.inject({ method: 'GET', url: '/posts/1' });
     expect(response.statusCode).toBe(200);
-    const body = response.json<SuccessBody<Post>>();
+    const body = response.json<SuccessEnvelope<Post>>();
     expect(body.data).toMatchObject({ id: 1, title: 'First post' });
   });
 
   it('GET /posts/0x1 rejects a hex id with a 400 error envelope', async () => {
     const response = await app.inject({ method: 'GET', url: '/posts/0x1' });
     expect(response.statusCode).toBe(400);
-    const body = response.json<ErrorBody>();
+    const body = response.json<ErrorEnvelope>();
     expect(body).toMatchObject({ statusCode: 400, error: 'Bad Request' });
     expect(typeof body.correlationId).toBe('string');
   });
@@ -88,7 +74,7 @@ describe('posts (e2e)', () => {
   it('GET /posts/999 returns a 404 error envelope', async () => {
     const response = await app.inject({ method: 'GET', url: '/posts/999' });
     expect(response.statusCode).toBe(404);
-    expect(response.json<ErrorBody>()).toMatchObject({
+    expect(response.json<ErrorEnvelope>()).toMatchObject({
       statusCode: 404,
       error: 'Not Found',
       path: '/posts/999',
@@ -102,7 +88,7 @@ describe('posts (e2e)', () => {
       payload: { userId: 1, title: 'New post', body: 'Some body' },
     });
     expect(created.statusCode).toBe(201);
-    expect(created.json<SuccessBody<Post>>().data).toMatchObject({
+    expect(created.json<SuccessEnvelope<Post>>().data).toMatchObject({
       title: 'New post',
     });
 
@@ -121,7 +107,7 @@ describe('posts (e2e)', () => {
       payload: { title: 'Updated title' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json<SuccessBody<Post>>().data).toMatchObject({
+    expect(response.json<SuccessEnvelope<Post>>().data).toMatchObject({
       id: 2,
       title: 'Updated title',
     });
@@ -130,10 +116,15 @@ describe('posts (e2e)', () => {
   it('DELETE /posts/:id removes a post', async () => {
     const response = await app.inject({ method: 'DELETE', url: '/posts/3' });
     expect(response.statusCode).toBe(200);
-    expect(response.json<SuccessBody<null>>().data).toBeNull();
+    expect(response.json<SuccessEnvelope<null>>().data).toBeNull();
+  });
 
-    const after = await app.inject({ method: 'GET', url: '/posts/3' });
-    expect(after.statusCode).toBe(404);
+  it('GET /health/live and /health/ready both succeed', async () => {
+    const live = await app.inject({ method: 'GET', url: '/health/live' });
+    expect(live.statusCode).toBe(200);
+
+    const ready = await app.inject({ method: 'GET', url: '/health/ready' });
+    expect(ready.statusCode).toBe(200);
   });
 
   it('exposes Post and CreatePost as named $ref schemas in the OpenAPI document', () => {

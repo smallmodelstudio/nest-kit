@@ -12,7 +12,7 @@ Update the status column when a phase starts or finishes.
 | -------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 0. Skeleton    | Done        | none (workspace tooling)                                                                                                             |
 | 1. Core spike  | Done        | `contract`, `nest-zod`, minimal `nest-envelope` and `nest-errors`                                                                    |
-| 2. Extract     | Not started | `nest-context`, `nest-errors`, `nest-logging`, `nest-health`, `nest-cache`, `nest-metrics`, `nest-bootstrap`, `otel`, `nest-testing` |
+| 2. Extract     | Done        | `nest-context`, `nest-errors`, `nest-logging`, `nest-health`, `nest-cache`, `nest-metrics`, `nest-bootstrap`, `otel`, `nest-testing` |
 | 3. Resources   | Not started | `http-client`, `nest-http`, `nest-resource`                                                                                          |
 | 4. Codegen     | Not started | `cli`, service template                                                                                                              |
 | 5. Persistence | Not started | `nest-drizzle`                                                                                                                       |
@@ -76,6 +76,11 @@ along.
 
 **Done when** every package passes its moved specs and the standalone check, and
 the playground runs on them.
+
+The architecture doc's `nest-errors` built-in mapper list also names an
+`UpstreamError` mapper (timeout → 504, upstream 4xx passed through, anything
+else → 502). That's deferred to phase 3: `UpstreamError` is defined by
+`http-client`, which doesn't exist yet.
 
 ## 3. Resources
 

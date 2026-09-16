@@ -6,3 +6,6 @@ allowBuilds:
   # swagger-ui-dist's install-time analytics ping (transitive via @nestjs/swagger); no functional need.
   '@scarf/scarf': false
   '@swc/core': true
+  # @grpc/grpc-js's codegen step (transitive via the OTLP exporters); needed
+  # for grpc-js to work at all.
+  protobufjs: true

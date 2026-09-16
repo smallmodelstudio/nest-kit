@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { STATUS_CODES } from 'node:http';
+import { HttpException } from '@nestjs/common';
 import { ZodError } from 'zod';
 
 export interface ErrorMapping {
@@ -12,13 +13,11 @@ export interface ErrorMapper {
   toResponse(error: unknown): ErrorMapping;
 }
 
-function httpStatusName(status: number): string {
-  const key = HttpStatus[status];
-  if (!key) return 'Error';
-  return key
-    .split('_')
-    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-    .join(' ');
+function isMessage(value: unknown): value is string | string[] {
+  return (
+    typeof value === 'string' ||
+    (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+  );
 }
 
 export const httpExceptionMapper: ErrorMapper = {
@@ -27,15 +26,33 @@ export const httpExceptionMapper: ErrorMapper = {
     const exception = error as HttpException;
     const status = exception.getStatus();
     const body = exception.getResponse();
-    const rawMessage =
-      typeof body === 'string'
-        ? body
-        : ((body as { message?: string | string[] }).message ??
-          exception.message);
-    const message = Array.isArray(rawMessage)
-      ? rawMessage.join('; ')
-      : rawMessage;
-    return { statusCode: status, message, error: httpStatusName(status) };
+
+    if (typeof body === 'string') {
+      return { statusCode: status, message: body, error: exception.name };
+    }
+
+    // Most HttpExceptions carry a `{ message, error }` body (Nest's own
+    // built-in exceptions, and everything an app throws directly). But
+    // that's a convention, not something `HttpException` enforces — e.g.
+    // Terminus's HealthCheckService throws a ServiceUnavailableException
+    // whose body is the whole HealthCheckResult object, with its own
+    // unrelated `error` key (failed checks, not an HTTP error name).
+    // Falling back to the exception's own message/a STATUS_CODES lookup
+    // keeps the envelope honest for any exception body shape, not just the
+    // `{ message, error }` ones.
+    const { message, error: bodyError } = body as {
+      message?: unknown;
+      error?: unknown;
+    };
+    const rawMessage = isMessage(message) ? message : exception.message;
+    return {
+      statusCode: status,
+      message: Array.isArray(rawMessage) ? rawMessage.join('; ') : rawMessage,
+      error:
+        typeof bodyError === 'string'
+          ? bodyError
+          : (STATUS_CODES[status] ?? exception.name),
+    };
   },
 };
 

@@ -11,6 +11,7 @@ export default tseslint.config(
       '**/*.js',
       '**/*.mjs',
       '**/*.cjs',
+      '**/*.d.ts',
     ],
   },
   ...tseslint.configs.recommendedTypeChecked,

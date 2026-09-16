@@ -23,14 +23,19 @@ export interface SuccessEnvelope<T> {
  * `{ items, page }` (see `PaginatedResult` in `@smallmodelstudio/contract`) is
  * unwrapped into `data: items` with `meta.page` set.
  *
- * `correlationId` is generated per response for now; `nest-context` (phase 2)
- * takes over as the source without changing this shape.
+ * `getCorrelationId` (optional) supplies `meta.correlationId` — e.g.
+ * `() => RequestContext.correlationId()` from `@smallmodelstudio/nest-context`.
+ * `nest-envelope` doesn't depend on `nest-context` directly (packages in the
+ * same layer stay independent of each other); without it, or when it returns
+ * `undefined`, a fresh id is generated per response instead.
  */
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<
   T,
   SuccessEnvelope<T>
 > {
+  constructor(private readonly getCorrelationId?: () => string | undefined) {}
+
   intercept(
     _context: ExecutionContext,
     next: CallHandler<T>,
@@ -38,7 +43,7 @@ export class TransformInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((value) => {
         const timestamp = new Date().toISOString();
-        const correlationId = randomUUID();
+        const correlationId = this.getCorrelationId?.() ?? randomUUID();
         if (isPaginatedResult(value)) {
           return {
             data: value.items,

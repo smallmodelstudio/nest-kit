@@ -60,6 +60,38 @@ describe('GlobalExceptionFilter', () => {
     consoleError.mockRestore();
   });
 
+  it('uses a generated correlation id when none is supplied', () => {
+    const filter = new GlobalExceptionFilter();
+    const { host, send } = fakeHost('/posts');
+
+    filter.catch(new NotFoundException(), host);
+
+    const body = send.mock.calls[0]?.[0] as { correlationId: string };
+    expect(body.correlationId.length).toBeGreaterThan(0);
+  });
+
+  it('uses getCorrelationId when it returns a value', () => {
+    const filter = new GlobalExceptionFilter([], () => 'from-context');
+    const { host, send } = fakeHost('/posts');
+
+    filter.catch(new NotFoundException(), host);
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ correlationId: 'from-context' }),
+    );
+  });
+
+  it('falls back to a generated id when getCorrelationId returns undefined', () => {
+    const filter = new GlobalExceptionFilter([], () => undefined);
+    const { host, send } = fakeHost('/posts');
+
+    filter.catch(new NotFoundException(), host);
+
+    const body = send.mock.calls[0]?.[0] as { correlationId: string };
+    expect(body.correlationId).toEqual(expect.any(String));
+    expect(body.correlationId.length).toBeGreaterThan(0);
+  });
+
   it('checks extra mappers before the built-ins', () => {
     class CustomError extends Error {}
     const filter = new GlobalExceptionFilter([

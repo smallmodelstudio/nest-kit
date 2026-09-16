@@ -1,0 +1,179 @@
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { context, trace } from '@opentelemetry/api';
+import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
+import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
+import {
+  CORRELATION_ID_HEADER,
+  registerCorrelationIdHook,
+} from './correlation-id.hook';
+import { RequestContext } from './request-context';
+
+describe('registerCorrelationIdHook', () => {
+  let onRequest: (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    done: () => void,
+  ) => void;
+
+  beforeEach(() => {
+    const instance = {
+      addHook: vi.fn((_event: string, handler: typeof onRequest) => {
+        onRequest = handler;
+      }),
+    } as unknown as FastifyInstance;
+    registerCorrelationIdHook(instance);
+  });
+
+  const makeReply = (): { reply: FastifyReply; header: Mock } => {
+    const header = vi.fn();
+    return { reply: { header } as unknown as FastifyReply, header };
+  };
+
+  it('generates a correlation id when none is supplied', () => {
+    const request = { headers: {} } as unknown as FastifyRequest;
+    const { reply, header } = makeReply();
+    const done = vi.fn();
+
+    onRequest(request, reply, done);
+
+    expect(request.correlationId).toEqual(expect.any(String));
+    expect(request.correlationId.length).toBeGreaterThan(0);
+    expect(header).toHaveBeenCalledWith(
+      CORRELATION_ID_HEADER,
+      request.correlationId,
+    );
+    expect(done).toHaveBeenCalled();
+  });
+
+  it('makes the correlation id available on RequestContext for the rest of the request', () => {
+    const request = { headers: {} } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+    let seenInsideRequest: string | undefined;
+
+    onRequest(request, reply, () => {
+      seenInsideRequest = RequestContext.correlationId();
+    });
+
+    expect(seenInsideRequest).toBe(request.correlationId);
+  });
+
+  it('reuses an incoming correlation id header', () => {
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: 'incoming-id-123' },
+    } as unknown as FastifyRequest;
+    const { reply, header } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).toBe('incoming-id-123');
+    expect(header).toHaveBeenCalledWith(
+      CORRELATION_ID_HEADER,
+      'incoming-id-123',
+    );
+  });
+
+  it('reuses the first value when the header is duplicated', () => {
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: ['first-id', 'second-id'] },
+    } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).toBe('first-id');
+  });
+
+  it('ignores a blank incoming header and generates a new id', () => {
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: '   ' },
+    } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).not.toBe('   ');
+    expect(request.correlationId.trim().length).toBeGreaterThan(0);
+  });
+
+  it('rejects an incoming header containing characters outside the allowed set and generates a new id', () => {
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: 'not a valid id! \r\n' },
+    } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).not.toBe('not a valid id! \r\n');
+    expect(request.correlationId).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  it('rejects an incoming header longer than 128 characters and generates a new id', () => {
+    const tooLong = 'a'.repeat(129);
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: tooLong },
+    } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).not.toBe(tooLong);
+  });
+
+  it('accepts an incoming header at exactly the 128 character limit', () => {
+    const atLimit = 'a'.repeat(128);
+    const request = {
+      headers: { [CORRELATION_ID_HEADER]: atLimit },
+    } as unknown as FastifyRequest;
+    const { reply } = makeReply();
+
+    onRequest(request, reply, vi.fn());
+
+    expect(request.correlationId).toBe(atLimit);
+  });
+
+  describe('with an active OTel span', () => {
+    // The API package's default ContextManager is a no-op, so
+    // context.with() below wouldn't actually make the span "active" — it'd
+    // just call the callback directly — without a real one registered, the
+    // same way an app's own NodeSDK.start() registers one at boot.
+    const contextManager = new AsyncHooksContextManager().enable();
+    context.setGlobalContextManager(contextManager);
+    afterAll(() => {
+      context.disable();
+    });
+
+    const provider = new BasicTracerProvider();
+    const tracer = provider.getTracer('correlation-id.hook.spec');
+
+    it('uses the active span trace id as the generated correlation id', () => {
+      const request = { headers: {} } as unknown as FastifyRequest;
+      const { reply } = makeReply();
+      const span = tracer.startSpan('incoming request');
+
+      context.with(trace.setSpan(context.active(), span), () => {
+        onRequest(request, reply, vi.fn());
+      });
+      span.end();
+
+      expect(request.correlationId).toBe(span.spanContext().traceId);
+    });
+
+    it('still honours a client-supplied header over the active span', () => {
+      const request = {
+        headers: { [CORRELATION_ID_HEADER]: 'incoming-id-123' },
+      } as unknown as FastifyRequest;
+      const { reply } = makeReply();
+      const span = tracer.startSpan('incoming request');
+
+      context.with(trace.setSpan(context.active(), span), () => {
+        onRequest(request, reply, vi.fn());
+      });
+      span.end();
+
+      expect(request.correlationId).toBe('incoming-id-123');
+      expect(request.correlationId).not.toBe(span.spanContext().traceId);
+    });
+  });
+});

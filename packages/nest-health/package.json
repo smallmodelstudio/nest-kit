@@ -1,0 +1,37 @@
+{
+  "name": "@smallmodelstudio/nest-health",
+  "version": "0.0.0",
+  "description": "/health/live and /health/ready, envelope-aware Swagger docs, and a readiness gate that drains traffic before shutdown.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12",
+    "@nestjs/swagger": "^12",
+    "@nestjs/terminus": "^12"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/core": "^12.0.3",
+    "@nestjs/swagger": "^12.0.1",
+    "@nestjs/terminus": "^12.0.0",
+    "@nestjs/testing": "^12.0.3",
+    "@types/node": "24.13.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  }
+}

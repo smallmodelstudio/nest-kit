@@ -1,34 +1,44 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { mergeOpenApiComponents } from '@smallmodelstudio/contract';
-import { TransformInterceptor } from '@smallmodelstudio/nest-envelope';
-import { GlobalExceptionFilter } from '@smallmodelstudio/nest-errors';
+import { createApp } from '@smallmodelstudio/nest-bootstrap';
+import { CONFIG_TOKEN } from '@smallmodelstudio/nest-config';
+import { registerCorrelationIdHook } from '@smallmodelstudio/nest-context';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import type { AppConfig } from './config';
 
-async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter(),
-  );
+async function bootstrap(): Promise<void> {
+  const app = await createApp(AppModule, {
+    plugins: [
+      {
+        configure: (app: NestFastifyApplication) =>
+          registerCorrelationIdHook(app.getHttpAdapter().getInstance()),
+      },
+    ],
+  });
 
-  app.useGlobalInterceptors(new TransformInterceptor());
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // Swaps Nest's default console Logger for pino app-wide, same as main.ts
+  // in the harness this package's `nest-logging` was extracted from.
+  app.useLogger(app.get(Logger));
 
-  const config = new DocumentBuilder()
+  const config = app.get<AppConfig>(CONFIG_TOKEN);
+
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('nest-kit playground')
-    .setDescription('Phase 1 core spike: posts served from an in-memory array.')
+    .setDescription(
+      'Phase 2 extract: posts served from an in-memory array, on top of ' +
+        'nest-context, nest-config, nest-logging, nest-cache, nest-metrics, ' +
+        'nest-health and nest-bootstrap.',
+    )
     .setVersion('0.0.0')
     .build();
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   mergeOpenApiComponents(document);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(3000, '0.0.0.0');
+  await app.listen({ port: config.port, host: '0.0.0.0' });
 }
 
 void bootstrap();

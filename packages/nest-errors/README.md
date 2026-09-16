@@ -16,5 +16,16 @@ checked before the built-ins:
 app.useGlobalFilters(new GlobalExceptionFilter([myUpstreamErrorMapper]));
 ```
 
+A second, optional constructor argument supplies the response's correlation
+id — wire in `RequestContext.correlationId` from `@smallmodelstudio/nest-context`
+if you're using it (`nest-errors` doesn't depend on it directly); without
+one, a fresh id is generated per response:
+
+```ts
+app.useGlobalFilters(
+  new GlobalExceptionFilter([], () => RequestContext.correlationId()),
+);
+```
+
 See [the architecture doc](../../docs/README-architecture.md#response-shapes)
 for the exact error shape.
